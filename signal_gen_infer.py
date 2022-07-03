@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 
 from scipy.stats import (
-    norm, gamma,rice
+    norm, gamma
     )
 
 from .signal_simulator import signal_simulator
