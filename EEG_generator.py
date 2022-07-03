@@ -61,7 +61,9 @@ class EEG_generator():
     def genN(self,n,snrs,noise_params, maxRange=1,subjects=[],code_times=15, cutOff=36,processor=None):
         channels=1
         signals = self.sGen.getN(n,subjects) #Randomly get N template pairs
-        code_indices = random.choices([i for i in range(len(self.codes[0]))],k=n)
+        #code_indices = random.choices([i for i in range(len(self.codes[0]))],k=n)
+        code_indices = np.resize(np.arange(len(self.codes[0])),n)
+        np.random.shuffle(code_indices)
         
         codes = np.array([np.tile(self.codes[:,i],code_times) for i in code_indices])
         #Need to repeat codes 15 times and cut off signal length at the end if needed
@@ -87,13 +89,16 @@ class EEG_generator():
         combinations = [noises[i]/np.std(noises[i])+responses[i]/np.std(responses[i])*snrs[i] for i in range(n)]
         
         combinations = np.transpose(combinations,(1,2,0))
+        combinations = combinations * 0.00002
         return codes,np.array(code_indices),np.array(combinations)
     
     #Drawing only the noise
     def genNDrawn1(self,n,snrs,subjects=[],code_times=15,cutOff=36,processor=None):
         channels=1
         signals = self.sGen.getN(n,subjects) #Randomly get N template pairs
-        code_indices = random.choices([i for i in range(len(self.codes[0]))],k=n)
+        #code_indices = random.choices([i for i in range(len(self.codes[0]))],k=n)
+        code_indices = np.resize(np.arange(len(self.codes[0])),n)
+        np.random.shuffle(code_indices)
         
         codes = np.array([np.tile(self.codes[:,i],code_times) for i in code_indices])
         #Need to repeat codes 15 times and cut off signal length at the end if needed
@@ -114,15 +119,18 @@ class EEG_generator():
         combinations = [noises[i]/np.std(noises[i])+responses[i]/np.std(responses[i])*snrs[i] for i in range(n)]
         
         combinations = np.transpose(combinations,(1,2,0))
+        combinations = combinations * 0.00002
         return codes,np.array(code_indices),np.array(combinations)
 
-    #Drawing both the signal and the noise
+    #Drawing both the signal and the noise, using original double Gamma
     def genNDrawn2(self,n,snrs,code_times=15,cutOff=36,processor=None):
         channels=1
         #signals = self.sGen.getN(n,subjects) #Randomly get N template pairs
         signals = self.sGen.drawN(n)
         
-        code_indices = random.choices([i for i in range(len(self.codes[0]))],k=n)
+        #code_indices = random.choices([i for i in range(len(self.codes[0]))],k=n)
+        code_indices = np.resize(np.arange(len(self.codes[0])),n)
+        np.random.shuffle(code_indices)
         
         codes = np.array([np.tile(self.codes[:,i],code_times) for i in code_indices])
         #Need to repeat codes 15 times and cut off signal length at the end if needed
@@ -143,15 +151,18 @@ class EEG_generator():
         combinations = [noises[i]/np.std(noises[i])+responses[i]/np.std(responses[i])*snrs[i] for i in range(n)]
         
         combinations = np.transpose(combinations,(1,2,0))
+        combinations = combinations * 0.00002
         return codes,np.array(code_indices),np.array(combinations)
 
-    #Drawing both the signal and the noise
+    #Drawing both the signal and the noise, using relative double Gamma
     def genNDrawn2_2(self,n,snrs,code_times=15,cutOff=36,processor=None):
         channels=1
         #signals = self.sGen.getN(n,subjects) #Randomly get N template pairs
         signals = self.sGen.drawN2(n)
         
-        code_indices = random.choices([i for i in range(len(self.codes[0]))],k=n)
+        #code_indices = random.choices([i for i in range(len(self.codes[0]))],k=n)
+        code_indices = np.resize(np.arange(len(self.codes[0])),n)
+        np.random.shuffle(code_indices)
         
         codes = np.array([np.tile(self.codes[:,i],code_times) for i in code_indices])
         #Need to repeat codes 15 times and cut off signal length at the end if needed
@@ -172,15 +183,18 @@ class EEG_generator():
         combinations = [noises[i]/np.std(noises[i])+responses[i]/np.std(responses[i])*snrs[i] for i in range(n)]
         
         combinations = np.transpose(combinations,(1,2,0))
+        combinations = combinations * 0.00002
         return codes,np.array(code_indices),np.array(combinations)
 
-    #Drawing both the signal and the noise
+    #Drawing both the signal and the noise, using the custom signal representation
     def genNDrawn2_3(self,n,snrs,code_times=15,cutOff=36,processor=None):
         channels=1
         #signals = self.sGen.getN(n,subjects) #Randomly get N template pairs
         signals = self.sGen.drawN3(n)
         
-        code_indices = random.choices([i for i in range(len(self.codes[0]))],k=n)
+        #code_indices = random.choices([i for i in range(len(self.codes[0]))],k=n)
+        code_indices = np.resize(np.arange(len(self.codes[0])),n)
+        np.random.shuffle(code_indices)
         
         codes = np.array([np.tile(self.codes[:,i],code_times) for i in code_indices])
         #Need to repeat codes 15 times and cut off signal length at the end if needed
@@ -201,6 +215,39 @@ class EEG_generator():
         combinations = [noises[i]/np.std(noises[i])+responses[i]/np.std(responses[i])*snrs[i] for i in range(n)]
         
         combinations = np.transpose(combinations,(1,2,0))
+        combinations = combinations * 0.00002
+        return codes,np.array(code_indices),np.array(combinations)
+
+    #Drawing both the signal and the noise, using the custom signal representation
+    def genNDrawn2_3_rel(self,n,snrs,code_times=15,cutOff=36,processor=None):
+        channels=1
+        #signals = self.sGen.getN(n,subjects) #Randomly get N template pairs
+        signals = self.sGen.drawN3_rel(n)
+        
+        #code_indices = random.choices([i for i in range(len(self.codes[0]))],k=n)
+        code_indices = np.resize(np.arange(len(self.codes[0])),n)
+        np.random.shuffle(code_indices)
+        
+        codes = np.array([np.tile(self.codes[:,i],code_times) for i in code_indices])
+        #Need to repeat codes 15 times and cut off signal length at the end if needed
+        intermediate = np.array([self.overlay2(signals[i],codes[i]) for i in range(n)])
+        
+        responses = np.array([x[:len(x)-cutOff] for x in intermediate]) #This cuts off values at the end.
+        
+        tlength = len(responses[0])
+        
+        
+        noises = self.nGen.drawN(n,tlength)
+        
+        if processor != None:
+            noises = np.transpose(noises,(1,2,0))
+            noises = processor.process(noises)
+            noises = np.transpose(noises,(2,0,1))
+        
+        combinations = [noises[i]/np.std(noises[i])+responses[i]/np.std(responses[i])*snrs[i] for i in range(n)]
+        
+        combinations = np.transpose(combinations,(1,2,0))
+        combinations = combinations * 0.00002
         return codes,np.array(code_indices),np.array(combinations)
     
     def overlay2(self,signals,code):

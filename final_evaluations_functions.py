@@ -11,9 +11,10 @@ import torch
 from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 
-from .extra_functions import splice_data
+from .extra_functions import gaussian_drawer, splice_data
 
 from .EEGNet import EEGNet
+from .LR_scheduler import LRScheduler
 
 
 #This file will contain all functions, including the train functions, that I will be using
@@ -35,6 +36,15 @@ def train_net_final(
     #optimizer = torch.optim.SGD(params=net.parameters(), lr=lr)
     optimizer = torch.optim.Adam(params=net.parameters(), lr=lr)
     loss_func = nn.CrossEntropyLoss(reduction='sum')
+    lr_scheduler = LRScheduler(optimizer) #Maybe this scheduler is needed anyway
+    #lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
+
+    #1) I also think I should pbb fix the train() and test() issues, if I can
+    #2) Idea given by internet: Set track_running_stats=False  in BN layers during initialization
+    #3) Also maybe use a lower learning rate to start with?
+
+    # It seems (pbb) 2) worked as a solution to 1), still need to test effect on consistency
+
     scores = []
     best_valid_accuracy = None
     best_net_params = None
@@ -45,6 +55,7 @@ def train_net_final(
         accuracy_accumulator = 0
         count = 0
         loss_accumulator = 0.
+        net.train()
         for batch in train_dataloader:
             X,y = batch
             optimizer.zero_grad() 
@@ -62,6 +73,7 @@ def train_net_final(
         accuracy_accumulator = 0
         count = 0
         loss_accumulator = 0.
+        net.eval()
         with torch.no_grad():
             for batch in valid_dataloader:
                 X,y = batch
@@ -70,6 +82,7 @@ def train_net_final(
                 accuracy_accumulator += torch.sum(y==y_pred.argmax(dim=1)).detach().item()
                 loss_accumulator += loss.detach().item()
                 count += y.shape[0]
+        lr_scheduler(loss_accumulator)
         last_valid_accuracy = accuracy_accumulator/count
         valid_accs[epoch] = last_valid_accuracy
         scores.append(dict(epoch=epoch, phase='valid', metric='accuracy', value=accuracy_accumulator/count))
@@ -108,6 +121,7 @@ def test_net_final(
     ):
 
     # test step :
+    net.eval()
     accuracy_accumulator = 0
     count = 0
     with torch.no_grad():
@@ -128,11 +142,18 @@ def test_net_final(
 #Model_ind: 1 = original, 2= noiseDraw, 3= bothDraw  (sub-parts dependent on sGen)
 #ind 4 = second draw version with Gamma,  ind 5 = custom draw
 def do_EEGNet_sim_emp_final(model_ind,device,sGen,nGen,gener,processor=None,sim_sub_list=[],emp_sub_list=[],sim_trials=[500,50],snr_base=0.68,
-                 epochs=5,ep_noImp=10,F1=8,F2=16,D=2,drop=0.1,lr=5e-3,splices=1,batch_size=10,numSub=30,n_folds=5,in_chans=1):
+                 epochs=5,ep_noImp=10,F1=8,F2=16,D=2,drop=0.1,lr=5e-3,splices=1,batch_size=10,numSub=30,n_folds=5,in_chans=1,
+                 net_init=None,snr_min = 0.5,snr_max=1,draw_snr=False):
 
-    snr = snr_base
-    snrs1 = [snr for i in range(sim_trials[0])]
-    snrs2 = [snr for i in range(sim_trials[1])]
+    snr_distr = gaussian_drawer(np.array([snr_base,snr_min,snr_max]))
+
+    if draw_snr:
+        snrs1 = snr_distr.rvs(sim_trials[0])
+        snrs2 = snr_distr.rvs(sim_trials[1])
+    
+    else:
+        snrs1 = [snr_base for i in range(sim_trials[0])]
+        snrs2 = [snr_base for i in range(sim_trials[1])]
 
     argPink = {"sizeof":[1,1],"mask":[],"exponent":1}
     argGauss = {"sizeof":[1,1]}
@@ -159,17 +180,20 @@ def do_EEGNet_sim_emp_final(model_ind,device,sGen,nGen,gener,processor=None,sim_
     elif model_ind == 5:
         codesT,targetsT,resultsT = gener.genNDrawn2_3(sim_trials[0],snrs1,processor=processor)
         codesV,targetsV,resultsV = gener.genNDrawn2_3(sim_trials[1],snrs2,processor=processor)
+    elif model_ind == 6:
+        codesT,targetsT,resultsT = gener.genNDrawn2_3_rel(sim_trials[0],snrs1,processor=processor)
+        codesV,targetsV,resultsV = gener.genNDrawn2_3_rel(sim_trials[1],snrs2,processor=processor)
     
 
     resultsT = processor.process(resultsT)
     resultsT = np.transpose(resultsT,(2,0,1))
-    resultsT = resultsT * 0.00002
+    #resultsT = resultsT * 0.00002
 
     resultsT,targetsT = splice_data(resultsT,targetsT,splices)
 
     resultsV = processor.process(resultsV)
     resultsV = np.transpose(resultsV,(2,0,1))
-    resultsV = resultsV * 0.00002
+    #resultsV = resultsV * 0.00002
 
     resultsV,targetsV = splice_data(resultsV,targetsV,splices)
 
@@ -186,6 +210,8 @@ def do_EEGNet_sim_emp_final(model_ind,device,sGen,nGen,gener,processor=None,sim_
     valid_dataloader = DataLoader(TensorDataset(valid_X_tensor, valid_y_tensor), batch_size=batch_size, drop_last=False)
 
     net = EEGNet(20, F1=F1,F2=F2,D=D,drop_prob=drop,inp_length = resultsT.shape[2],in_chans=in_chans).to(device)
+    if net_init != None:
+        net.load_state_dict(net_init)
 
     scores_df, trained_net = train_net_final(
         net, 
@@ -239,10 +265,15 @@ def do_EEGNet_sim_emp_final(model_ind,device,sGen,nGen,gener,processor=None,sim_
 
 #CCA sim > emp
 def do_CCA_sim_emp_final(model_ind,sGen,nGen,gener,processor=None,sim_sub_list=np.arange(30),emp_sub_list=np.arange(30),sim_trials=500,snr_base=0.68,
-                 splices=1,numSub=30,n_folds=5,n_channels=1):
+                 splices=1,numSub=30,n_folds=5,n_channels=1,snr_min = 0.5,snr_max=1,draw_snr=False):
     
-    snr = snr_base
-    snrs1 = [snr for i in range(sim_trials)]
+    snr_distr = gaussian_drawer(np.array([snr_base,snr_min,snr_max]))
+
+    if draw_snr:
+        snrs1 = snr_distr.rvs(sim_trials)
+    
+    else:
+        snrs1 = [snr_base for i in range(sim_trials)]
 
     argPink = {"sizeof":[1,1],"mask":[],"exponent":1}
     argGauss = {"sizeof":[1,1]}
@@ -264,8 +295,9 @@ def do_CCA_sim_emp_final(model_ind,sGen,nGen,gener,processor=None,sim_sub_list=n
         codesT,y_train,X_train = gener.genNDrawn2_2(sim_trials,snrs1,processor=processor)
     elif model_ind == 5:
         codesT,y_train,X_train = gener.genNDrawn2_3(sim_trials,snrs1,processor=processor)
-    
-
+    elif model_ind == 6:
+        codesT,y_train,X_train = gener.genNDrawn2_3_rel(sim_trials,snrs1,processor=processor)
+        
     X_train = processor.process(X_train)
     X_train = np.transpose(X_train,(2,0,1))
     X_train = X_train * 0.00002
@@ -354,11 +386,21 @@ def do_CCA_sim_emp_final(model_ind,sGen,nGen,gener,processor=None,sim_sub_list=n
 ######################################
 
 def do_EEGNet_emp_emp_final(device,sGen,emp_sub_list=[],epochs=200,ep_noImp=10,F1=8,F2=16,D=2,n_folds=5,
-            drop=0.1,lr=5e-3,splices=1,batch_size=10,numSub=30,val_portion=0.2,in_chans=1):
+            drop=0.1,lr=5e-3,splices=1,batch_size=10,numSub=30,val_portion=0.2,in_chans=1,
+            allEps=True,net_init=None,rec_init=False):
     
     X_emp_orig,y_emp_orig,V,M,fs,n_classes,n_samples_transient = sGen.get_needed_values()
 
     final_evals = np.zeros((numSub,n_folds))
+
+    score_dfs = []
+    nets = []
+    net_inits= []
+
+    if allEps:
+        toFold = n_folds
+    else:
+        toFold = 1
 
     #The choice of train and test data needs to be adapted, also I need folds
     for index,sub_i in tqdm(enumerate(emp_sub_list)):
@@ -373,7 +415,7 @@ def do_EEGNet_emp_emp_final(device,sGen,emp_sub_list=[],epochs=200,ep_noImp=10,F
 
         folds = np.resize(np.arange(n_folds), n_trials)
 
-        for i_fold in tqdm(range(n_folds)):
+        for i_fold in tqdm(range(toFold)):
             X_train, y_train = X_emp[:, :,folds != i_fold], y_emp[folds != i_fold]
             X_test, y_test = X_emp[:, :,folds == i_fold], y_emp[folds == i_fold]
             
@@ -416,6 +458,12 @@ def do_EEGNet_emp_emp_final(device,sGen,emp_sub_list=[],epochs=200,ep_noImp=10,F
             test__dataloader = DataLoader(TensorDataset(test__X_tensor, test__y_tensor), batch_size=batch_size, drop_last=False)
     
             net = EEGNet(20, F1=F1,D=D,F2=F2,drop_prob=drop,inp_length = X_train.shape[2],in_chans=in_chans).to(device)
+            if net_init != None:
+                net.load_state_dict(net_init)
+
+            if rec_init:
+                cur_net_init = deepcopy(net.state_dict())
+                net_inits.append(cur_net_init)
 
             scores_df, trained_net = train_net_final(
                 net, 
@@ -426,11 +474,13 @@ def do_EEGNet_emp_emp_final(device,sGen,emp_sub_list=[],epochs=200,ep_noImp=10,F
                 max_epochs_without_improvement=ep_noImp,
             )
 
+            score_dfs.append(scores_df)
+            nets.append(trained_net)
             test_accuracy = test_net_final(trained_net,test__dataloader)
         
             final_evals[index,i_fold] = 100*test_accuracy
 
-    return final_evals
+    return final_evals,score_dfs,nets,net_inits
 
 #CCA for emp > emp
 def do_CCA_emp_emp_final(sGen,emp_sub_list=[],n_folds=5,
@@ -515,11 +565,21 @@ def do_CCA_emp_emp_final(sGen,emp_sub_list=[],n_folds=5,
 ######################################
 
 def do_EEGNet_sim_sim_final(model_ind,device,sGen,nGen,gener,processor=None,sim_sub_list=[],sim_trials=[500,50,50],snr_base=0.68,
-                 epochs=5,ep_noImp=10,F1=8,F2=16,D=2,drop=0.1,lr=5e-3,splices=1,batch_size=10,n_folds=5,in_chans=1):
+                 epochs=5,ep_noImp=10,F1=8,F2=16,D=2,drop=0.1,lr=5e-3,splices=1,batch_size=10,n_folds=5,in_chans=1,
+                 net_init=None,snr_min = 0.5,snr_max=1,draw_snr=False):
 
-    snr = snr_base
-    snrs1 = [snr for i in range(sim_trials[0])]
-    snrs2 = [snr for i in range(sim_trials[1])]
+    snr_distr = gaussian_drawer(np.array([snr_base,snr_min,snr_max]))
+
+    if draw_snr:
+        snrs1 = snr_distr.rvs(sim_trials[0])
+        snrs2 = snr_distr.rvs(sim_trials[1])
+        snrs3 = snr_distr.rvs(sim_trials[2])
+    
+    else:
+        snrs1 = [snr_base for i in range(sim_trials[0])]
+        snrs2 = [snr_base for i in range(sim_trials[1])]
+        snrs3 = [snr_base for i in range(sim_trials[2])]
+        
 
     argPink = {"sizeof":[1,1],"mask":[],"exponent":1}
     argGauss = {"sizeof":[1,1]}
@@ -537,38 +597,42 @@ def do_EEGNet_sim_sim_final(model_ind,device,sGen,nGen,gener,processor=None,sim_
         if model_ind == 1:
             codesT,targetsT,resultsT = gener.genN(sim_trials[0],snrs1,noise_params,maxRange=1,subjects=sim_sub_list,processor=processor)
             codesV,targetsV,resultsV = gener.genN(sim_trials[1],snrs2,noise_params,maxRange=1,subjects=sim_sub_list,processor=processor)
-            codesTest,targetsTest,resultsTest = gener.genN(sim_trials[2],snrs2,noise_params,maxRange=1,subjects=sim_sub_list,processor=processor)
+            codesTest,targetsTest,resultsTest = gener.genN(sim_trials[2],snrs3,noise_params,maxRange=1,subjects=sim_sub_list,processor=processor)
         elif model_ind == 2:
             codesT,targetsT,resultsT = gener.genNDrawn1(sim_trials[0],snrs1,subjects=sim_sub_list,processor=processor)
             codesV,targetsV,resultsV = gener.genNDrawn1(sim_trials[1],snrs2,subjects=sim_sub_list,processor=processor)
-            codesTest,targetsTest,resultsTest = gener.genNDrawn1(sim_trials[2],snrs2,subjects=sim_sub_list,processor=processor)
+            codesTest,targetsTest,resultsTest = gener.genNDrawn1(sim_trials[2],snrs3,subjects=sim_sub_list,processor=processor)
         elif model_ind == 3:
             codesT,targetsT,resultsT = gener.genNDrawn2(sim_trials[0],snrs1,processor=processor)
             codesV,targetsV,resultsV = gener.genNDrawn2(sim_trials[1],snrs2,processor=processor)
-            codesTest,targetsTest,resultsTest = gener.genNDrawn2(sim_trials[2],snrs2,processor=processor)
+            codesTest,targetsTest,resultsTest = gener.genNDrawn2(sim_trials[2],snrs3,processor=processor)
         elif model_ind == 4:
             codesT,targetsT,resultsT = gener.genNDrawn2_2(sim_trials[0],snrs1,processor=processor)
             codesV,targetsV,resultsV = gener.genNDrawn2_2(sim_trials[1],snrs2,processor=processor)
-            codesTest,targetsTest,resultsTest = gener.genNDrawn2_2(sim_trials[2],snrs2,processor=processor)
+            codesTest,targetsTest,resultsTest = gener.genNDrawn2_2(sim_trials[2],snrs3,processor=processor)
         elif model_ind == 5:
             codesT,targetsT,resultsT = gener.genNDrawn2_3(sim_trials[0],snrs1,processor=processor)
             codesV,targetsV,resultsV = gener.genNDrawn2_3(sim_trials[1],snrs2,processor=processor)
-            codesTest,targetsTest,resultsTest = gener.genNDrawn2_3(sim_trials[2],snrs2,processor=processor)
+            codesTest,targetsTest,resultsTest = gener.genNDrawn2_3(sim_trials[2],snrs3,processor=processor)
+        elif model_ind == 6:
+            codesT,targetsT,resultsT = gener.genNDrawn2_3_rel(sim_trials[0],snrs1,processor=processor)
+            codesV,targetsV,resultsV = gener.genNDrawn2_3_rel(sim_trials[1],snrs2,processor=processor)
+            codesTest,targetsTest,resultsTest = gener.genNDrawn2_3_rel(sim_trials[2],snrs3,processor=processor)
         
 
         resultsT = processor.process(resultsT)
         resultsT = np.transpose(resultsT,(2,0,1))
-        resultsT = resultsT * 0.00002
+        #resultsT = resultsT * 0.00002
         resultsT,targetsT = splice_data(resultsT,targetsT,splices)
 
         resultsV = processor.process(resultsV)
         resultsV = np.transpose(resultsV,(2,0,1))
-        resultsV = resultsV * 0.00002
+        #resultsV = resultsV * 0.00002
         resultsV,targetsV = splice_data(resultsV,targetsV,splices)
 
         resultsTest = processor.process(resultsTest)
         resultsTest = np.transpose(resultsTest,(2,0,1))
-        resultsTest = resultsTest * 0.00002
+        #resultsTest = resultsTest * 0.00002
         resultsTest,targetsTest = splice_data(resultsTest,targetsTest,splices)
 
         train_X_tensor = torch.tensor(resultsT,dtype=torch.float32, device=device)
@@ -587,6 +651,9 @@ def do_EEGNet_sim_sim_final(model_ind,device,sGen,nGen,gener,processor=None,sim_
         test_dataloader = DataLoader(TensorDataset(test_X_tensor, test_y_tensor), batch_size=batch_size, drop_last=False)
 
         net = EEGNet(20, F1=F1,F2=F2,D=D,drop_prob=drop,inp_length = resultsT.shape[2],in_chans=in_chans).to(device)
+        if net_init != None:
+            net.load_state_dict(net_init)
+
 
         scores_df, trained_net = train_net_final(
             net, 
@@ -603,11 +670,17 @@ def do_EEGNet_sim_sim_final(model_ind,device,sGen,nGen,gener,processor=None,sim_
     return scores_df,trained_net,final_evals 
 
 def do_CCA_sim_sim_final(model_ind,sGen,nGen,gener,processor=None,sim_sub_list=[],sim_trials=[500,50],snr_base=0.68,
-                 splices=1,n_folds=5,n_channels=1):
+                 splices=1,n_folds=5,n_channels=1,snr_min = 0.5,snr_max=1,draw_snr=False):
 
-    snr = snr_base
-    snrs1 = [snr for i in range(sim_trials[0])]
-    snrs2 = [snr for i in range(sim_trials[1])]
+    snr_distr = gaussian_drawer(np.array([snr_base,snr_min,snr_max]))
+
+    if draw_snr:
+        snrs1 = snr_distr.rvs(sim_trials[0])
+        snrs2 = snr_distr.rvs(sim_trials[1])
+    
+    else:
+        snrs1 = [snr_base for i in range(sim_trials[0])]
+        snrs2 = [snr_base for i in range(sim_trials[1])]
 
     argPink = {"sizeof":[1,1],"mask":[],"exponent":1}
     argGauss = {"sizeof":[1,1]}
@@ -637,16 +710,18 @@ def do_CCA_sim_sim_final(model_ind,sGen,nGen,gener,processor=None,sim_sub_list=[
         elif model_ind == 5:
             codesT,targetsT,resultsT = gener.genNDrawn2_3(sim_trials[0],snrs1,processor=processor)
             codesTest,targetsTest,resultsTest = gener.genNDrawn2_3(sim_trials[1],snrs2,processor=processor)
-        
+        elif model_ind == 6:
+            codesT,targetsT,resultsT = gener.genNDrawn2_3_rel(sim_trials[0],snrs1,processor=processor)
+            codesTest,targetsTest,resultsTest = gener.genNDrawn2_3_rel(sim_trials[1],snrs2,processor=processor)
 
         resultsT = processor.process(resultsT)
         resultsT = np.transpose(resultsT,(2,0,1))
-        resultsT = resultsT * 0.00002
+        #resultsT = resultsT * 0.00002
         resultsT,targetsT = splice_data(resultsT,targetsT,splices)
 
         resultsTest = processor.process(resultsTest)
         resultsTest = np.transpose(resultsTest,(2,0,1))
-        resultsTest = resultsTest * 0.00002
+        #resultsTest = resultsTest * 0.00002
         resultsTest,targetsTest = splice_data(resultsTest,targetsTest,splices)
 
         y_train = targetsT.astype(int)
