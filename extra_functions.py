@@ -6,6 +6,8 @@ import seaborn as sns
 
 import pandas as pd
 
+from scipy.stats import truncnorm
+
 
 def get_freq_dom(result, fs=120):
     if len(np.shape(result))<2:
