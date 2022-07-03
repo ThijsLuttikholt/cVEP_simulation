@@ -1,41 +1,6 @@
-import os
-import numpy as np
-import random
-import math
-
-from copy import deepcopy
-
-import glob
-import h5py
-import mne
-import time
-
-import scipy.io
-from scipy.interpolate import griddata
-from scipy import signal
-from scipy.fftpack import fft,ifft
-from scipy.signal import periodogram
-from scipy.stats import truncnorm
-from sklearn.preprocessing import StandardScaler
-from sklearn.cross_decomposition import CCA
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import KFold
-from matplotlib.patches import Circle, Ellipse, Polygon
-import matplotlib.pyplot as plt
-import seaborn as sns
-from tqdm import tqdm
-
-from scipy.interpolate import interp1d
-from scipy.interpolate import make_interp_spline, BSpline
-
-import pandas as pd
 import torch
 from torch import nn
 from torch.nn.functional import elu
-from torch.utils.data import TensorDataset, DataLoader
-
-import colorednoise as cn
 
 class Ensure4d(torch.nn.Module):
     def forward(self, x):

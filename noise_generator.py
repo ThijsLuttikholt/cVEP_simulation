@@ -1,52 +1,11 @@
-import os
 import numpy as np
-import random
 import math
 
-from copy import deepcopy
-
-import glob
-import h5py
-import mne
-import time
-
-import scipy.io
-from scipy.interpolate import griddata
 from scipy import signal
-from scipy.fftpack import fft,ifft
-from scipy.signal import periodogram
-from scipy.stats import truncnorm
-from scipy.special import gamma as funGamma
-from sklearn.preprocessing import StandardScaler
-from sklearn.cross_decomposition import CCA
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import KFold
-from matplotlib.patches import Circle, Ellipse, Polygon
-import matplotlib.pyplot as plt
-import seaborn as sns
-from tqdm import tqdm
-
-from scipy.interpolate import interp1d
-from scipy.interpolate import make_interp_spline, BSpline
-
-import pandas as pd
-import torch
-from torch import nn
-from torch.nn.functional import elu
-from torch.utils.data import TensorDataset, DataLoader
 
 import colorednoise as cn
 
-from scipy.stats import (
-    norm, beta, expon, gamma, genextreme, logistic, lognorm, triang, uniform, fatiguelife,            
-    gengamma, gennorm, dweibull, dgamma, gumbel_r, powernorm, rayleigh, weibull_max, weibull_min, 
-    laplace, alpha, genexpon, bradford, betaprime, burr, fisk, genpareto, hypsecant, 
-    halfnorm, halflogistic, invgauss, invgamma, levy, loglaplace, loggamma, maxwell, 
-    mielke, ncx2, ncf, nct, nakagami, pareto, lomax, powerlognorm, powerlaw, rice, 
-    semicircular, trapezoid, rice, invweibull, foldnorm, foldcauchy, cosine, exponpow, 
-    exponweib, wald, wrapcauchy, truncexpon, truncnorm, t, rdist
-    )
+from scipy.stats import norm
 
 #Make more generic, ensure that generating noise can be done, and that new functions of noise generation can be added
 #Also add option to get the frequency domain of the noise

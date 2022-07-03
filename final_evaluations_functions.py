@@ -1,4 +1,3 @@
-from pyexpat.errors import XML_ERROR_INVALID_TOKEN
 import numpy as np
 
 from copy import deepcopy
