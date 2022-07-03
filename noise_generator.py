@@ -52,7 +52,7 @@ from scipy.stats import (
 #Also add option to get the frequency domain of the noise
 class noiseGen():
 
-    def __init__(self,meansName='noiseMeans.npy',stdsName='noiseStds.npy'):
+    def __init__(self,meansName='noiseMeans_exp1.npy',stdsName='noiseStds_exp1.npy'):
         self.paramMeans = np.load(meansName)
         self.paramStds = np.load(stdsName)
         argPink = {"sizeof":[1,1],"mask":[],"exponent":1}#1.7}
@@ -98,7 +98,7 @@ class noiseGen():
     def genFreqSpike(self,sizeof, mask=[], peakFreq=50, harmonics=False, fs=120): #What does harmonics indicate?
         timeElapsed = np.array(range(sizeof[1])).T / fs
         
-        frequencySpike = [math.sin(2 * math.pi * time * peakFreq ) for time in timeElapsed]; #Rewrite
+        frequencySpike = [math.sin(2 * math.pi * time * peakFreq ) for time in timeElapsed]
         if harmonics:
             power = 0.1
             count = 2
@@ -174,7 +174,7 @@ class noiseGen():
 
     #This function needs to be made more generic, should accept any noise type
     #Should also take into account individual noise weights and normalize
-    def genNoise(self,types, weights,params, noiseLength,channels=1):
+    def genNoise(self,types, weights,params, noiseLength,channels=1,mult=2e-5):
         assert len(types)==len(weights)
         assert len(types)==len(params)
         #assert np.sum(weights) == 1
@@ -193,6 +193,7 @@ class noiseGen():
             fullNoise += currentNoise
             
         #Maybe the fullNoise should still be averaged or something in the end?
+        fullNoise = fullNoise * mult
         
         return fullNoise
     
