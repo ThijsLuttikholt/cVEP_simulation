@@ -69,3 +69,15 @@ def split_one(X_split,splices):
         new_X[i] = X_split[:,i*spliceLength:(i+1)*spliceLength]
     return new_X
 
+def gaussian_drawer(inp):
+        #Use scipy.stats.truncnorm
+        #Calculate sigma based on distance to farthest bound?
+        mu = inp[0]
+        bounds = np.array(inp[1:])
+        bounds = np.array(bounds)
+        sigma = np.max(np.abs(bounds-mu))/2
+        lower = bounds[0]
+        upper = bounds[1]
+        distr = truncnorm(
+        (lower - mu) / sigma, (upper - mu) / sigma, loc=mu, scale=sigma)
+        return distr

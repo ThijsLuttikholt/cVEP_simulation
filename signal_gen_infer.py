@@ -45,7 +45,7 @@ class signal_gen_infer():
             self.full_short = np.load('simShorts.npy')
             self.full_long = np.load('simLongs.npy')
 
-        self.sig_sim = signal_simulator('custMan_pars_short.npy','custMan_pars_long.npy')
+        self.sig_sim = signal_simulator('custMan_pars_short.npy','custMan_pars_long.npy','custMan_relLong_pars.npy')
 
     def changeSign(self,full_r1,full_r2):
         results1 = np.zeros((len(full_r1),len(full_r1[0])))
@@ -213,6 +213,7 @@ class signal_gen_infer():
     def get_needed_values(self):
         return self.Xs,self.ys,self.V,self.M,self.fs,self.n_classes,self.n_samples_transient
 
+    #For drawing with the drawn version of double-Gamma
     def drawN(self,n,length=-1):
         if length <= 0:
             length = self.full_short.shape[1]
@@ -309,6 +310,7 @@ class signal_gen_infer():
             result[i-1] = partResult
         return result
 
+    #For drawing with the relative version of drawn Gamma
     def drawN2(self,n,length=-1):
         if length <= 0:
             length = self.full_short.shape[1]
@@ -356,7 +358,11 @@ class signal_gen_infer():
 
     ############################
 
-    #The new drawN version
+    #For drawing with the custom signal modeling and distributions
     def drawN3(self,n):
         draws = self.sig_sim.drawN(n)
+        return draws
+
+    def drawN3_rel(self,n):
+        draws = self.sig_sim.drawN_rel(n)
         return draws
