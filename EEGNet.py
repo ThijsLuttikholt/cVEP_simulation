@@ -118,7 +118,7 @@ class EEGNet(nn.Sequential):
         )
         self.add_module(
             "bnorm_temporal",
-            nn.BatchNorm2d(self.F1, momentum=0.01, affine=True, eps=1e-3),
+            nn.BatchNorm2d(self.F1, momentum=0.01, affine=True, eps=1e-3,track_running_stats=False),
         )
         self.add_module(
             "conv_spatial",
@@ -133,27 +133,11 @@ class EEGNet(nn.Sequential):
                 padding=(0, 0),
             ),
         )
-        """
-        self.add_module(
-            "conv_combi",
-            nn.Conv2d(
-                1,
-                self.F1,
-                (self.in_chans, self.kernel_length),
-                #max_norm=1,
-                stride=(1,1),
-                bias=False,
-                groups=1,
-                padding=(0, self.kernel_length // 2),
-                dilation=(1,1),
-            ),
-        )
-        """
 
         self.add_module(
             "bnorm_1",
             nn.BatchNorm2d(
-                self.F1 * self.D, momentum=0.01, affine=True, eps=1e-3
+                self.F1 * self.D, momentum=0.01, affine=True, eps=1e-3,track_running_stats=False
             ),
         )
         self.add_module("elu_1", Expression(elu))
@@ -188,7 +172,7 @@ class EEGNet(nn.Sequential):
 
         self.add_module(
             "bnorm_2",
-            nn.BatchNorm2d(self.F2, momentum=0.01, affine=True, eps=1e-3),
+            nn.BatchNorm2d(self.F2, momentum=0.01, affine=True, eps=1e-3,track_running_stats=False),
         )
         self.add_module("elu_2", Expression(elu))
         self.add_module("pool_2", pool_class(kernel_size=(1, 8), stride=(1, 8)))
@@ -215,6 +199,9 @@ class EEGNet(nn.Sequential):
                 bias=True,
             ),
         )
+        
+        #self.add_module("softmax", Expression(softmax))
+        
         # Transpose back to the the logic of braindecode,
         # so time in third dimension (axis=2)
         self.add_module("permute_back", Expression(_transpose_1_0))
