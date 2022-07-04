@@ -138,7 +138,6 @@ def do_EEGNet_sim_emp_final(model_ind,device,sGen,nGen,gener,processor=None,sim_
                  net_init=None,snr_min = 0.5,snr_max=1,draw_snr=False):
 
     snr_distr = gaussian_drawer(np.array([snr_base,snr_min,snr_max]))
-
     if draw_snr:
         snrs1 = snr_distr.rvs(sim_trials[0])
         snrs2 = snr_distr.rvs(sim_trials[1])
@@ -176,7 +175,6 @@ def do_EEGNet_sim_emp_final(model_ind,device,sGen,nGen,gener,processor=None,sim_
         codesT,targetsT,resultsT = gener.genNDrawn2_3_rel(sim_trials[0],snrs1,processor=processor)
         codesV,targetsV,resultsV = gener.genNDrawn2_3_rel(sim_trials[1],snrs2,processor=processor)
     
-
     resultsT = processor.process(resultsT)
     resultsT = np.transpose(resultsT,(2,0,1))
 
@@ -260,7 +258,6 @@ def do_CCA_sim_emp_final(model_ind,sGen,nGen,gener,processor=None,sim_sub_list=n
 
     if draw_snr:
         snrs1 = snr_distr.rvs(sim_trials)
-    
     else:
         snrs1 = [snr_base for i in range(sim_trials)]
 

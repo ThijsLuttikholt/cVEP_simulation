@@ -2,6 +2,7 @@
 
 This folder contains various python files that were used in the master's thesis of Thijs Luttikholt. The descriptions of the main contents of the important files will now be provided. Any functions that are deemed to not be straightforward are explained.  In addition, various .npy files are included, which contain parameter values and modeled signals that are used by the various functions/classes. Furthermore, a data folder is included in which the data that was used in this thesis can be found.
 
+
 ### EEG_generator.py
 
 This file contains the base of the forward model (simulation framework) that was used in the study. To be precise, the EEG_generator class contains various functions used to generate data. However, the generator itself must be initialized with a version of the noiseGen class and a version of the signal_gen_infer class. The EEG_generator class contains 8 main functions:

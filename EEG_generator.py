@@ -13,6 +13,7 @@ class EEG_generator():
     def genN(self,n,snrs,noise_params, maxRange=1,subjects=[],code_times=15, cutOff=36,processor=None):
         channels=1
         signals = self.sGen.getN(n,subjects) #Randomly get N template pairs
+
         code_indices = np.resize(np.arange(len(self.codes[0])),n)
         np.random.shuffle(code_indices)
         
@@ -46,6 +47,7 @@ class EEG_generator():
     def genNDrawn1(self,n,snrs,subjects=[],code_times=15,cutOff=36,processor=None):
         channels=1
         signals = self.sGen.getN(n,subjects) #Randomly get N template pairs
+        
         code_indices = np.resize(np.arange(len(self.codes[0])),n)
         np.random.shuffle(code_indices)
         
@@ -137,6 +139,7 @@ class EEG_generator():
         np.random.shuffle(code_indices)
         
         codes = np.array([np.tile(self.codes[:,i],code_times) for i in code_indices])
+        
         intermediate = np.array([self.overlay2(signals[i],codes[i]) for i in range(n)])
         
         responses = np.array([x[:len(x)-cutOff] for x in intermediate]) #This cuts off values at the end.
