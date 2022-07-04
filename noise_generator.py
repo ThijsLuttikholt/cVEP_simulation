@@ -7,14 +7,12 @@ import colorednoise as cn
 
 from scipy.stats import norm
 
-#Make more generic, ensure that generating noise can be done, and that new functions of noise generation can be added
-#Also add option to get the frequency domain of the noise
 class noiseGen():
 
     def __init__(self,meansName='noiseMeans_exp1.npy',stdsName='noiseStds_exp1.npy'):
         self.paramMeans = np.load(meansName)
         self.paramStds = np.load(stdsName)
-        argPink = {"sizeof":[1,1],"mask":[],"exponent":1}#1.7}
+        argPink = {"sizeof":[1,1],"mask":[],"exponent":1}
         argGauss = {"sizeof":[1,1]}
         argSpike = {"sizeof":[1,1],"fs":120}
         argAlpha = {"sizeof":[1,1],"fs":120}
@@ -24,18 +22,18 @@ class noiseGen():
                    "params":[argPink,argGauss,argSpike,argAlpha],
                    "channels":1}
 
-    def genPink(self,sizeof,mask=[],exponent=1):#1.7):
+    def genPink(self,sizeof,mask=[],exponent=1):
         
-        noise = cn.powerlaw_psd_gaussian(exponent, [sizeof[0],sizeof[1]]) #This contains random parts
+        noise = cn.powerlaw_psd_gaussian(exponent, [sizeof[0],sizeof[1]]) 
         
         if len(mask) > 0:
             noise = noise * np.tile(mask, (sizeof[0],sizeof[1]))
 
-        return noise #Need to adapt this, only works with 1 channel now (used to be noise[0])
+        return noise 
 
     def genGauss(self,sizeof,mask=[],mean=[],var=1):
         
-        noise = np.random.randn(sizeof[0],sizeof[1]) * math.sqrt(var) #Need to adapt this, WHY?
+        noise = np.random.randn(sizeof[0],sizeof[1]) * math.sqrt(var)
         
         if len(mean) > 0:
             if len(mean[0]) == 1:
@@ -54,7 +52,7 @@ class noiseGen():
         noise = signal.lfilter(b,a,gauss)
         return noise
 
-    def genFreqSpike(self,sizeof, mask=[], peakFreq=50, harmonics=False, fs=120): #What does harmonics indicate?
+    def genFreqSpike(self,sizeof, mask=[], peakFreq=50, harmonics=False, fs=120): 
         timeElapsed = np.array(range(sizeof[1])).T / fs
         
         frequencySpike = [math.sin(2 * math.pi * time * peakFreq ) for time in timeElapsed]
@@ -87,14 +85,14 @@ class noiseGen():
         maxStd = max(eyeblinkStd1,eyeblinkStd2)
         sampleStep = 1/fs
         lp = np.arange(-10*maxStd,10*maxStd+sampleStep,sampleStep)
-        blinkIndexes = np.argwhere(np.array(mask)>0)#find(mask)
+        blinkIndexes = np.argwhere(np.array(mask)>0)
         blinkMaxPower = np.zeros((len(blinkIndexes),1))
         for i in range(len(blinkIndexes)):
             pattern = (lp+np.random.randn(1)*eyeblinkStd1)* np.exp(-(lp*lp)/(2*eyeblinkStd2**2))
-            thisBlink = np.zeros((sizeof[0],1)) #This seems to be wrong too
+            thisBlink = np.zeros((sizeof[0],1))
             thisBlink[blinkIndexes[i]] = 1 
             print(noisePower.shape)
-            intermediate = self.convSame(thisBlink[i], pattern)#This goes wrong
+            intermediate = self.convSame(thisBlink[i], pattern)
             print(intermediate.shape)
             noisePower += intermediate
             blinkMaxPower[i] = max(np.absolute(pattern))
@@ -106,14 +104,13 @@ class noiseGen():
         if cOrient:
             noiseMultiplier = np.ones((1,sizeof[1]))
         else:
-            #% If we're generating for a free dipole orientation case, weight directions differently
             assert sizeof[1]%3 == 0
             noiseMultiplier = np.tile([1,0,10],[1,sizeof[1]/3])
         
         noise = np.random.randn(sizeof[0],sizeof[1]) * np.tile(noisePower, [1,sizeof[1]]) * np.tile(noiseMultiplier , [sizeof[0], 1])
         return noise[0]
 
-    def genEyeMov(self,sizeof, dataset=[],cOrient=True,physMod='core_head',mask=[10],movAmp=1): #Need to adapt the mask
+    def genEyeMov(self,sizeof, dataset=[],cOrient=True,physMod='core_head',mask=[10],movAmp=1): 
         if cOrient:
             noiseMultiplier = np.ones((1,sizeof[1]))
         else:
@@ -136,7 +133,6 @@ class noiseGen():
     def genNoise(self,types, weights,params, noiseLength,channels=1,mult=2e-5):
         assert len(types)==len(weights)
         assert len(types)==len(params)
-        #assert np.sum(weights) == 1
         
         fullNoise = np.zeros((channels, noiseLength))
         
@@ -144,14 +140,10 @@ class noiseGen():
             currentNoise = ntype(**params[ind])
             stDev = np.std(currentNoise)
             
-            #Already has the correct relative weighting, but why sqrt(1/weight)  ?
-            #currentNoise = currentNoise * (math.sqrt(1/snrs[ind])/stDev) 
             currentNoise = currentNoise /stDev * weights[ind]
             
-            #Should we merely sum or average them? Summing pbb, weights should count up to 1
             fullNoise += currentNoise
             
-        #Maybe the fullNoise should still be averaged or something in the end?
         fullNoise = fullNoise * mult
         
         return fullNoise
@@ -165,7 +157,6 @@ class noiseGen():
         draws = self.drawNoiseParams(n)
         thisNoisePar = self.noise_params
         thisNoisePar["noiseLength"] = tlength
-        #thisNoisePar["n"] = n
         
         for item in thisNoisePar["params"]:
             item["sizeof"] = [item["sizeof"][0],tlength]
@@ -177,7 +168,6 @@ class noiseGen():
             
             curNoise = self.genNoise(**curNoisePar)
             curNoise *= draws[5,i]
-            #print(curNoise.shape)
             noises[i,:] = curNoise
             
         return noises

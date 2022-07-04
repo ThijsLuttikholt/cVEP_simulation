@@ -25,6 +25,5 @@ class preprocessor():
             for i2 in range(inp.shape[2]):
                 current = inp[i1,:,i2]
                 current = mne.filter.filter_data(current,sfreq=self.fs,l_freq=self.band_pass[0],h_freq=self.band_pass[1])
-                #current = mne.filter.resample(current,)   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
                 outp[i1,:,i2] = current
         return outp

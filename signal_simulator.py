@@ -9,7 +9,7 @@ class signal_simulator():
         self.rel_long_params = np.load(rel_long_parsPath)
         self.rel_long_dists = self.help_dist(self.rel_long_params)
 
-    def make_s(self,x,L,k,x0): #Acts weirdly when x values are low
+    def make_s(self,x,L,k,x0): 
         out = np.array(L/(1+np.exp(-k*(x-x0))))
         return out
 
@@ -30,9 +30,9 @@ class signal_simulator():
         return i-1
 
     def fit_s2(self,peak_points,amplitudes,fs,length,k,x0):
-        stepSize = (length/fs)/length #Is 36 correct or should it be 35?
-        begin = self.find_closest_after(stepSize,peak_points[0]) #Seems to be fine
-        end = self.find_closest_prior(stepSize,peak_points[1])#Seems to be fine
+        stepSize = (length/fs)/length 
+        begin = self.find_closest_after(stepSize,peak_points[0]) 
+        end = self.find_closest_prior(stepSize,peak_points[1])
         alt_x = np.arange(begin,end+1,1)
         L = amplitudes[1]-amplitudes[0]
         out = self.make_s(alt_x,L,k,x0/stepSize)
@@ -54,10 +54,8 @@ class signal_simulator():
             part_shifted = part+amplitudes[i-1]
             if newPeaks[0] in overlap_points and i>1:
                 minuser = 1
-            #Need some kind of overlap handling
-            #out[startInd-minuser:startInd-minuser+partLen] = part_shifted #Old version with means
             if minuser>0:
-                out[startInd:startInd-minuser+partLen] = part_shifted[minuser:]#out[startInd-minuser]/2
+                out[startInd:startInd-minuser+partLen] = part_shifted[minuser:]
             else:
                 out[startInd:startInd+partLen] = part_shifted
             startInd -= minuser
@@ -77,8 +75,6 @@ class signal_simulator():
     ######################################################################################
 
     def draw_wide_gaussian(self,inp):
-        #Use scipy.stats.truncnorm
-        #Calculate sigma based on distance to nearest bound somehow?
         mu = inp[0]
         bounds = np.array(inp[1:])
         bounds = np.array(bounds)
@@ -163,7 +159,6 @@ class signal_simulator():
 
     def drawN_rel(self,n):
         shortPars,longPars = self.drawPars_rel(n)
-        #rel_longPars = self.drawPars_rel(n)
         xs = np.array([[self.intermediate(shortPars[i,:]),self.intermediate_rel(longPars[i,:])] for i in range(n)])
         return xs
 
@@ -232,10 +227,8 @@ class signal_simulator():
             part_shifted = part+amplitudes[i-1]
             if newPeaks[0] in overlap_points and i>1:
                 minuser = 1
-            #Need some kind of overlap handling
-            #out[startInd-minuser:startInd-minuser+partLen] = part_shifted #Old version with means
             if minuser>0:
-                out[startInd:startInd-minuser+partLen] = part_shifted[minuser:]#out[startInd-minuser]/2
+                out[startInd:startInd-minuser+partLen] = part_shifted[minuser:]
             else:
                 out[startInd:startInd+partLen] = part_shifted
             startInd -= minuser

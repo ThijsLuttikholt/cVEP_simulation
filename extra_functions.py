@@ -72,8 +72,6 @@ def split_one(X_split,splices):
     return new_X
 
 def gaussian_drawer(inp):
-        #Use scipy.stats.truncnorm
-        #Calculate sigma based on distance to farthest bound?
         mu = inp[0]
         bounds = np.array(inp[1:])
         bounds = np.array(bounds)

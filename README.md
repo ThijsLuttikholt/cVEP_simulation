@@ -1,6 +1,7 @@
 # Description of the implementation
 
-This folder contains various python files that were used in the master's thesis of Thijs Luttikholt. The descriptions of the main contents of the important files will now be provided. Any functions that are deemed to not be straightforward are explained. 
+This folder contains various python files that were used in the master's thesis of Thijs Luttikholt. The descriptions of the main contents of the important files will now be provided. Any functions that are deemed to not be straightforward are explained.  In addition, various .npy files are included, which contain parameter values and modeled signals that are used by the various functions/classes. Furthermore, a data folder is included in which the data that was used in this thesis can be found.
+
 
 ### EEG_generator.py
 

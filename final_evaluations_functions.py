@@ -35,14 +35,7 @@ def train_net_final(
     #optimizer = torch.optim.SGD(params=net.parameters(), lr=lr)
     optimizer = torch.optim.Adam(params=net.parameters(), lr=lr)
     loss_func = nn.CrossEntropyLoss(reduction='sum')
-    lr_scheduler = LRScheduler(optimizer) #Maybe this scheduler is needed anyway
-    #lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
-
-    #1) I also think I should pbb fix the train() and test() issues, if I can
-    #2) Idea given by internet: Set track_running_stats=False  in BN layers during initialization
-    #3) Also maybe use a lower learning rate to start with?
-
-    # It seems (pbb) 2) worked as a solution to 1), still need to test effect on consistency
+    lr_scheduler = LRScheduler(optimizer)
 
     scores = []
     best_valid_accuracy = None
@@ -145,7 +138,6 @@ def do_EEGNet_sim_emp_final(model_ind,device,sGen,nGen,gener,processor=None,sim_
                  net_init=None,snr_min = 0.5,snr_max=1,draw_snr=False):
 
     snr_distr = gaussian_drawer(np.array([snr_base,snr_min,snr_max]))
-
     if draw_snr:
         snrs1 = snr_distr.rvs(sim_trials[0])
         snrs2 = snr_distr.rvs(sim_trials[1])
@@ -183,16 +175,13 @@ def do_EEGNet_sim_emp_final(model_ind,device,sGen,nGen,gener,processor=None,sim_
         codesT,targetsT,resultsT = gener.genNDrawn2_3_rel(sim_trials[0],snrs1,processor=processor)
         codesV,targetsV,resultsV = gener.genNDrawn2_3_rel(sim_trials[1],snrs2,processor=processor)
     
-
     resultsT = processor.process(resultsT)
     resultsT = np.transpose(resultsT,(2,0,1))
-    #resultsT = resultsT * 0.00002
 
     resultsT,targetsT = splice_data(resultsT,targetsT,splices)
 
     resultsV = processor.process(resultsV)
     resultsV = np.transpose(resultsV,(2,0,1))
-    #resultsV = resultsV * 0.00002
 
     resultsV,targetsV = splice_data(resultsV,targetsV,splices)
 
@@ -229,7 +218,6 @@ def do_EEGNet_sim_emp_final(model_ind,device,sGen,nGen,gener,processor=None,sim_
     
     final_evals = np.zeros((numSub,n_folds))
 
-    #The choice of train and test data needs to be adapted, also I need folds
     for index,sub_i in tqdm(enumerate(emp_sub_list)):
 
         X_emp = X_emp_orig[[sub_i]]
@@ -270,7 +258,6 @@ def do_CCA_sim_emp_final(model_ind,sGen,nGen,gener,processor=None,sim_sub_list=n
 
     if draw_snr:
         snrs1 = snr_distr.rvs(sim_trials)
-    
     else:
         snrs1 = [snr_base for i in range(sim_trials)]
 
@@ -302,8 +289,6 @@ def do_CCA_sim_emp_final(model_ind,sGen,nGen,gener,processor=None,sim_sub_list=n
     X_train = X_train * 0.00002
 
     X_train,y_train = splice_data(X_train,y_train,splices)
-
-    #Here should be the training of the CCA method, and any and all necessary transposes etc.
 
     y_train = y_train.astype(int)
 
@@ -355,7 +340,6 @@ def do_CCA_sim_emp_final(model_ind,sGen,nGen,gener,processor=None,sim_sub_list=n
         folds = np.resize(np.arange(n_folds), n_trials)
 
         for i_fold in tqdm(range(n_folds)):
-            #Actually do the splitting here
             # Split data to train and valid set
             X_test, y_test = X_emp[:, :, folds == i_fold], y_emp[folds == i_fold]
 
@@ -445,8 +429,6 @@ def do_EEGNet_emp_emp_final(device,sGen,emp_sub_list=[],epochs=200,ep_noImp=10,F
             train_y_tensor = torch.tensor(y_train, device=device) 
             valid_y_tensor = torch.tensor(y_val, device=device) 
             test__y_tensor = torch.tensor(y_test, device=device)
-
-            #What to do with the validation set?
 
             train_y_tensor = train_y_tensor.type(torch.LongTensor)
             valid_y_tensor = valid_y_tensor.type(torch.LongTensor)
@@ -621,17 +603,14 @@ def do_EEGNet_sim_sim_final(model_ind,device,sGen,nGen,gener,processor=None,sim_
 
         resultsT = processor.process(resultsT)
         resultsT = np.transpose(resultsT,(2,0,1))
-        #resultsT = resultsT * 0.00002
         resultsT,targetsT = splice_data(resultsT,targetsT,splices)
 
         resultsV = processor.process(resultsV)
         resultsV = np.transpose(resultsV,(2,0,1))
-        #resultsV = resultsV * 0.00002
         resultsV,targetsV = splice_data(resultsV,targetsV,splices)
 
         resultsTest = processor.process(resultsTest)
         resultsTest = np.transpose(resultsTest,(2,0,1))
-        #resultsTest = resultsTest * 0.00002
         resultsTest,targetsTest = splice_data(resultsTest,targetsTest,splices)
 
         train_X_tensor = torch.tensor(resultsT,dtype=torch.float32, device=device)
@@ -715,12 +694,10 @@ def do_CCA_sim_sim_final(model_ind,sGen,nGen,gener,processor=None,sim_sub_list=[
 
         resultsT = processor.process(resultsT)
         resultsT = np.transpose(resultsT,(2,0,1))
-        #resultsT = resultsT * 0.00002
         resultsT,targetsT = splice_data(resultsT,targetsT,splices)
 
         resultsTest = processor.process(resultsTest)
         resultsTest = np.transpose(resultsTest,(2,0,1))
-        #resultsTest = resultsTest * 0.00002
         resultsTest,targetsTest = splice_data(resultsTest,targetsTest,splices)
 
         y_train = targetsT.astype(int)
