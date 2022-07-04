@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 
 from scipy.stats import (
-    norm, gamma,rice
+    norm, gamma
     )
 
 from .signal_simulator import signal_simulator
@@ -45,7 +45,7 @@ class signal_gen_infer():
             self.full_short = np.load('simShorts.npy')
             self.full_long = np.load('simLongs.npy')
 
-        self.sig_sim = signal_simulator('custMan_pars_short.npy','custMan_pars_long.npy')
+        self.sig_sim = signal_simulator('custMan_pars_short.npy','custMan_pars_long.npy','custMan_relLong_pars.npy')
 
     def changeSign(self,full_r1,full_r2):
         results1 = np.zeros((len(full_r1),len(full_r1[0])))
@@ -78,15 +78,10 @@ class signal_gen_infer():
         
         fs = tmp["fs"]
         self.fs = fs
-        
-        #!!!!!!!!!!!!!!LOOK OUT, THIS IS HARDCODED !!!!!!!!!!!!!!!!!!!
-        #It only currently uses the Oz channel
 
         if self.allChan==0:
             X = X[4,:,:]
             X = np.reshape(X,(1,X.shape[0],X.shape[1]))
-        #X = X[4,:,:]
-        #X = np.reshape(X,(1,X.shape[0],X.shape[1]))
         
         if len(self.Xs) == 0:
             self.Xs = np.zeros((len(self.subjects),X.shape[0],X.shape[1],X.shape[2]))
@@ -213,6 +208,7 @@ class signal_gen_infer():
     def get_needed_values(self):
         return self.Xs,self.ys,self.V,self.M,self.fs,self.n_classes,self.n_samples_transient
 
+    #For drawing with the drawn version of quadruple-Gamma
     def drawN(self,n,length=-1):
         if length <= 0:
             length = self.full_short.shape[1]
@@ -247,7 +243,6 @@ class signal_gen_infer():
             newData = gamma.rvs(inValues[ind,0],loc=inValues[ind,1],scale=inValues[ind,2],size=n)
         return newData
     
-    #Might need a failsafe where the previous one is redrawn? Or just continue with latest draw
     def keepDraw(self,ind,inValues,norm_indices,minimum):
         draw = 0
         numDraws = 0
@@ -270,10 +265,8 @@ class signal_gen_infer():
 
         num_extra = int(len(values)/2)
         alphas = values[:num_extra]
-        #betas = values[num_extra:2*num_extra]
         betas = np.ones(num_extra)
         cs = values[num_extra:2*num_extra]
-        #mult = values[-1]
     
         result=np.zeros(length)
         for i in range(1,length+1):
@@ -287,8 +280,6 @@ class signal_gen_infer():
     #########################################
     #New drawing
     #########################################
-
-
 
     #This is the adapted version, using only 3 C values and a full multiplier. 
     def genCustS4Adapt2(self,values,amount=36):
@@ -309,6 +300,7 @@ class signal_gen_infer():
             result[i-1] = partResult
         return result
 
+    #For drawing with the relative version of drawn Gamma
     def drawN2(self,n,length=-1):
         if length <= 0:
             length = self.full_short.shape[1]
@@ -343,7 +335,6 @@ class signal_gen_infer():
             newData = gamma.rvs(inValues[ind,0],loc=inValues[ind,1],scale=inValues[ind,2],size=n)
         return newData
     
-    #Might need a failsafe where the previous one is redrawn? Or just continue with latest draw
     def keepDraw2(self,ind,inValues,norm_indices,minimum):
         draw = 0
         numDraws = 0
@@ -356,7 +347,11 @@ class signal_gen_infer():
 
     ############################
 
-    #The new drawN version
+    #For drawing with the custom signal modeling and distributions
     def drawN3(self,n):
         draws = self.sig_sim.drawN(n)
+        return draws
+
+    def drawN3_rel(self,n):
+        draws = self.sig_sim.drawN_rel(n)
         return draws
